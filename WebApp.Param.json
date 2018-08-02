@@ -1,0 +1,60 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "ASPname": {
+            "value": "mjw-asp-1"
+        },
+        "location": {
+            "value": "UK South"
+        },
+        "instanceSize": {
+            "value": "S2"
+        },
+        "instanceCount": {
+            "value": 1
+        },
+        "shouldApplyAutoScaleRule": {
+            "value": false
+        },
+        "autoScaleMinimumNumberOfInstances": {
+            "value": 0
+        },
+        "autoScaleMaximumNumberOfInstances": {
+            "value": 0
+        },
+        "scaleUpThreshold": {
+            "value": "0"
+        },
+        "scaleDownThreshold": {
+            "value": "0"
+        },
+        "aspWebHookUrl": {
+            "value": ""
+        },
+        "websites": {
+            "value": [
+                {
+                    "name": "mjw-webapp-1",
+                    "siteProperties": {
+                        "alwaysOn": "true",
+                        "http20Enabled": true,
+                        "minTlsVersion": "1.2",
+                        "ftpsState": "Disabled"
+                    },
+                    "enableHttpsOnly": true
+                },
+                {
+                    "name": "mjw-webapp-2",
+                    "siteProperties": {
+                        "alwaysOn": "true",
+                        "http20Enabled": true,
+                        "minTlsVersion": "1.2",
+                        "ftpsState": "Disabled"
+                    },
+                    "enableHttpsOnly": true
+                }
+            ]
+        }
+    }
+}

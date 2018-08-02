@@ -1,0 +1,241 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+    "contentVersion": "0.0.0.1",
+    "parameters": {
+        "ASPname": {
+            "type": "string",
+            "metadata": {
+                "description": "name of the App Service Plan"
+            }
+        },
+        "location": {
+            "type": "string",
+            "metadata": {
+                "description": "Location of App Service Plan"
+            }
+        },
+        "instanceSize": {
+            "type": "string",
+            "metadata": {
+                "description": "Instance Size"
+            }
+        },
+        "instanceCount": {
+            "type": "int",
+            "metadata": {
+                "description": "Initial Instance Count"
+            }
+        },
+        "shouldApplyAutoScaleRule": {
+            "type": "bool",
+            "metadata": {
+                "description": "Enable AutoScale rule"
+            }
+        },
+        "autoScaleMinimumNumberOfInstances": {
+            "type": "int",
+            "defaultValue": 1,
+            "metadata": {
+                "description": "minimum instance count"
+            }
+        },
+        "autoScaleMaximumNumberOfInstances": {
+            "type": "int",
+            "defaultValue": 1,
+            "metadata": {
+                "description": "maximum instance count"
+            }
+        },
+        "scaleUpthreshold": {
+            "type": "string",
+            "defaultValue": "50",
+            "metadata": {
+                "description": "Thresold before scale event"
+            }
+        },
+        "scaleDownThreshold": {
+            "type": "string",
+            "defaultValue": "30",
+            "metadata": {
+                "description": "Thresold before scale event"
+            }
+        },
+        "aspWebHookUrl": {
+            "type": "string",
+            "metadata": {
+                "description": "Web hook for Autoscaling Alerts"
+            }
+        },
+        "websites": {
+            "type": "array",
+            "metadata": {
+                "description": "Array of Websites associated with the App Service pan"
+            }
+        }
+    },
+    "variables": {
+        "targetResourceId": "[resourceId('Microsoft.Web/serverFarms/', parameters('ASPname'))]"
+    },
+    "resources": [
+        {
+            "apiVersion": "2017-08-01",
+            "type": "Microsoft.Web/serverfarms",
+            "name": "[parameters('ASPname')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "tier": "Standard",
+                "name": "[parameters('instanceSize')]",
+                "capacity": "[parameters('instanceCount')]"
+            },
+            "properties": {
+                "name": "[parameters('ASPname')]",
+                "numberOfWorkers": "[parameters('instanceCount')]"
+            }
+        },
+        {
+            "condition": "[parameters('shouldApplyAutoScaleRule')]",
+            "type": "Microsoft.Insights/autoscalesettings",
+            "name": "[concat(parameters('ASPname'), '-setting')]",
+            "apiVersion": "2015-04-01",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverFarms/', parameters('ASPname'))]"
+            ],
+            "properties": {
+                "profiles": [
+                    {
+                        "name": "DefaultAutoscaleProfile",
+                        "capacity": {
+                            "minimum": "[parameters('autoScaleMinimumNumberOfInstances')]",
+                            "maximum": "[parameters('autoScaleMaximumNumberOfInstances')]",
+                            "default": "[parameters('instanceCount')]"
+                        },
+                        "rules": [
+                            {
+                                "metricTrigger": {
+                                    "metricName": "CpuPercentage",
+                                    "metricNamespace": "",
+                                    "MetricResourceUri": "[variables('targetResourceId')]",
+                                    "timeGrain": "PT5M",
+                                    "statistic": "Average",
+                                    "timeWindow": "PT10M",
+                                    "timeAggregation": "Average",
+                                    "operator": "GreaterThan",
+                                    "threshold": "[parameters('scaleUpThreshold')]"
+                                },
+                                "scaleAction": {
+                                    "direction": "Increase",
+                                    "type": "ChangeCount",
+                                    "value": "1",
+                                    "cooldown": "PT5M"
+                                }
+                            },
+                            {
+                                "metricTrigger": {
+                                    "metricName": "CpuPercentage",
+                                    "metricNamespace": "",
+                                    "MetricResourceUri": "[variables('targetResourceId')]",
+                                    "timeGrain": "PT5M",
+                                    "statistic": "Average",
+                                    "timeWindow": "PT10M",
+                                    "timeAggregation": "Average",
+                                    "operator": "LessThan",
+                                    "threshold": "[parameters('scaleDownThreshold')]"
+                                },
+                                "scaleAction": {
+                                    "direction": "Decrease",
+                                    "type": "ChangeCount",
+                                    "value": "1",
+                                    "cooldown": "PT5M"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "enabled": true,
+                "targetResourceUri": "[variables('targetResourceId')]",
+                "notifications": [
+                    {
+                        "operation": "Scale",
+                        "webhooks": [
+                            {
+                                "serviceUri": "[parameters('aspWebHookUrl')]",
+                                "properties": {}
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "apiVersion": "2018-02-01",
+            "type": "Microsoft.Web/sites",
+            "dependsOn": [
+                "[variables('targetResourceId')]"
+            ],
+            "name": "[parameters('websites')[copyIndex()].name]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "name": "[parameters('websites')[copyIndex()].name]",
+                "serverFarmId": "[variables('targetResourceId')]",
+                "httpsOnly": "[parameters('websites')[copyIndex()].enableHttpsOnly]"
+            },
+            "resources": [
+                {
+                    "apiVersion": "2018-02-01",
+                    "name": "[concat(parameters('websites')[copyIndex()].name, '/web')]",
+                    "type": "Microsoft.Web/sites/config",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites/', parameters('websites')[copyIndex()].name)]"
+                    ],
+                    "properties": "[parameters('websites')[copyIndex()].siteProperties]"
+                },
+                {
+                    "apiVersion": "2018-02-01",
+                    "name": "logs",
+                    "type": "config",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/Sites', parameters('websites')[copyIndex()].name)]"
+                    ],
+                    "properties": {
+                        "httpLogs": {
+                            "fileSystem": {
+                                "retentionInMb": 40,
+                                "retentionInDays": 12,
+                                "enabled": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "apiVersion": "2018-02-01",
+                    "name": "staging",
+                    "type": "slots",
+                    "location": "[parameters('location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/Sites', parameters('websites')[copyIndex()].name)]"
+                    ],
+                    "properties": {
+                        "serverFarmId": "[variables('targetResourceId')]",
+                        "httpsOnly": "[parameters('websites')[copyIndex()].enableHttpsOnly]"
+                    },
+                    "resources": [
+                        {
+                            "apiVersion": "2018-02-01",
+                            "name": "web",
+                            "type": "config",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Web/Sites/Slots', parameters('websites')[copyIndex()].name, 'Staging')]"
+                            ],
+                            "properties": "[parameters('websites')[copyIndex()].siteProperties]"
+                        }
+                    ]
+                }
+            ],
+            "copy": {
+                "count": "[length(parameters('websites'))]",
+                "name": "websiteCopy"
+            }
+        }
+    ]
+}
