@@ -1,0 +1,60 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "ASPname": {
+            "value": "mjw-asp-2"
+        },
+        "location": {
+            "value": "UK South"
+        },
+        "instanceSize": {
+            "value": "S2"
+        },
+        "instanceCount": {
+            "value": 1
+        },
+        "shouldApplyAutoScaleRule": {
+            "value": true
+        },
+        "autoScaleMinimumNumberOfInstances": {
+            "value": 1
+        },
+        "autoScaleMaximumNumberOfInstances": {
+            "value": 3
+        },
+        "scaleUpThreshold": {
+            "value": "90"
+        },
+        "scaleDownThreshold": {
+            "value": "80"
+        },
+        "aspWebHookUrl": {
+            "value": "https://webhook.site/70eaa016-52ff-4898-a97c-2d7486b753de/"
+        },
+        "websites": {
+            "value": [
+                {
+                    "name": "mjw-webappasp-1",
+                    "siteProperties": {
+                        "alwaysOn": "true",
+                        "http20Enabled": true,
+                        "minTlsVersion": "1.2",
+                        "ftpsState": "Disabled"
+                    },
+                    "enableHttpsOnly": true
+                },
+                {
+                    "name": "mjw-webappasp-2",
+                    "siteProperties": {
+                        "alwaysOn": "true",
+                        "http20Enabled": true,
+                        "minTlsVersion": "1.2",
+                        "ftpsState": "Disabled"
+                    },
+                    "enableHttpsOnly": true
+                }
+            ]
+        }
+    }
+}
